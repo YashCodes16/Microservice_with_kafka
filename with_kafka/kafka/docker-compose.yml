@@ -1,0 +1,58 @@
+version: "3.8"
+
+services:
+
+  kafka:
+    image: apache/kafka:latest
+    container_name: kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+
+      # LISTENERS must bind to 0.0.0.0 inside the container
+      # Added 'EXTERNAL' listener on port 29092 for the host/external access
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:29092
+
+      # ADVERTISED LISTENERS
+      # PLAINTEXT: Used by kafka-ui and other services within the Docker network (kafka:9092)
+      # EXTERNAL: Used by clients outside the Docker network (localhost:9094)
+      # Note: The host's public IP/hostname should be used instead of 'localhost' in production, but 'localhost' works for local testing.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # Added EXTERNAL to the security protocol map
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+      
+      # Use the container's internal port for the advertised listener inside the container
+      # This is the port that corresponds to the 'EXTERNAL' listener inside the container (29092)
+    ports:
+      - "9094:29092"     # external access → localhost:9094 maps to container's 29092
+    networks:
+      - kafka-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: kafka-ui
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local-cluster
+      # kafka-ui uses the internal PLAINTEXT listener, which remains kafka:9092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_READONLY: "false"
+      KAFKA_CLUSTERS_0_TOPIC_AUTO_CREATE: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+    networks:
+      - kafka-network
+
+networks:
+  kafka-network:
+    driver: bridge
