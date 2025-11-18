@@ -1,16 +1,15 @@
 import { Kafka } from "kafkajs";
 
-//configure
+
 const kafka = new Kafka({
   clientId: "kafka-service",
-  brokers: ["localhost:9094"], // host machine port
+  brokers: ["localhost:9094"], 
 });
 
-//instance to connect
-//admin is required for topics
+
 const admin = kafka.admin();
 
-//execute
+
 
 const run = async () => {
   try {
